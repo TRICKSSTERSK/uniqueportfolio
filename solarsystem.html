@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Solar System</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #000010;
+            color: white;
+        }
+        canvas {
+            display: block;
+        }
+        #info-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 400px;
+            background-color: rgba(0, 0, 20, 0.85);
+            border: 1px solid rgba(100, 100, 255, 0.5);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: none;
+            z-index: 100;
+            text-align: center;
+        }
+        #info-panel h2 {
+            margin-top: 0;
+            color: #a7c7ff;
+            font-size: 1.8rem;
+        }
+        #info-panel p {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        #close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+        }
+        #title-overlay {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        #title-overlay h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(100, 150, 255, 0.7);
+        }
+        #title-overlay p {
+            margin: 5px 0 0;
+            font-size: 1rem;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.7);
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="title-overlay">
+        <h1>Our Solar System</h1>
+        <p>Click on a planet to learn more</p>
+    </div>
+
+    <div id="info-panel">
+        <button id="close-btn">&times;</button>
+        <h2 id="planet-name"></h2>
+        <p id="planet-info"></p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script type="module">
+        // --- Basic Setup ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 50, 120);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5); // soft white light
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 1.5, 2000);
+        pointLight.position.set(0, 0, 0);
+        scene.add(pointLight);
+        
+        // --- Controls ---
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.minDistance = 20;
+        controls.maxDistance = 400;
+
+        // --- Planet Data ---
+        const planetData = {
+            Sun: {
+                description: "The Sun is the star at the center of the Solar System. It is a nearly perfect ball of hot plasma, heated to incandescence by nuclear fusion reactions in its core."
+            },
+            Mercury: {
+                description: "Mercury is the smallest planet in our solar system and nearest to the Sun. It’s only slightly larger than Earth’s Moon. Its day is longer than its year!"
+            },
+            Venus: {
+                description: "Venus is the second planet from the Sun and is Earth’s closest planetary neighbor. It’s a terrestrial planet and is sometimes called Earth’s 'sister planet' due to their similar size and mass."
+            },
+            Earth: {
+                description: "Our home planet is the third planet from the Sun, and the only place we know of so far that’s inhabited by living things. It is the only planet in our solar system with liquid water on the surface."
+            },
+            Mars: {
+                description: "Mars is the fourth planet from the Sun – a dusty, cold, desert world with a very thin atmosphere. Mars is known as the Red Planet because of iron minerals in the Martian soil that rust, or oxidize, causing the soil and atmosphere to look red."
+            },
+            Jupiter: {
+                description: "Jupiter is the fifth planet from our Sun and is, by far, the largest planet in the solar system – more than twice as massive as all the other planets combined. Jupiter's Great Red Spot is a gigantic storm that’s about twice the size of Earth and has raged for over a century."
+            },
+            Saturn: {
+                description: "Saturn is the sixth planet from the Sun and the second-largest in the Solar System, after Jupiter. It is a gas giant with an average radius of about nine times that of Earth. It is most famous for its stunning system of rings."
+            },
+            Uranus: {
+                description: "Uranus is the seventh planet from the Sun. It has the third-largest planetary radius and fourth-largest planetary mass in the Solar System. Uranus is unique in that it rotates on its side, likely the result of a collision with a massive object long ago."
+            },
+            Neptune: {
+                description: "Neptune is the eighth and farthest-known Solar planet from the Sun. In the Solar System, it is the fourth-largest planet by diameter, the third-most-massive planet, and the densest giant planet. It has the strongest winds in the solar system."
+            }
+        };
+
+        // --- Helpers ---
+        // Texture loader (commented out as we are using basic colors for simplicity and performance)
+        // const textureLoader = new THREE.TextureLoader();
+
+        function createPlanet(size, color, position, name) {
+            const geometry = new THREE.SphereGeometry(size, 32, 32);
+            const material = new THREE.MeshStandardMaterial({ color: color });
+            const planet = new THREE.Mesh(geometry, material);
+            planet.position.x = position;
+            planet.name = name; // For raycasting
+            return planet;
+        }
+
+        function createOrbit(radius) {
+            const geometry = new THREE.TorusGeometry(radius, 0.1, 16, 100);
+            const material = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.2 });
+            const orbit = new THREE.Mesh(geometry, material);
+            orbit.rotation.x = Math.PI / 2;
+            return orbit;
+        }
+        
+        // --- Create Celestial Bodies ---
+        const celestialBodies = new THREE.Group();
+        scene.add(celestialBodies);
+
+        // Sun
+        const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffdd88, map: createGlowTexture() });
+        const sun = new THREE.Mesh(new THREE.SphereGeometry(10, 32, 32), sunMaterial);
+        sun.name = "Sun";
+        celestialBodies.add(sun);
+
+        // Planets and their orbits
+        const mercuryOrbit = new THREE.Group();
+        const mercury = createPlanet(0.8, 0xaaaaaa, 15, "Mercury");
+        mercuryOrbit.add(mercury, createOrbit(15));
+        
+        const venusOrbit = new THREE.Group();
+        const venus = createPlanet(1.2, 0xffd700, 25, "Venus");
+        venusOrbit.add(venus, createOrbit(25));
+
+        const earthOrbit = new THREE.Group();
+        const earth = createPlanet(1.3, 0x4d91ff, 38, "Earth");
+        earthOrbit.add(earth, createOrbit(38));
+
+        const marsOrbit = new THREE.Group();
+        const mars = createPlanet(1, 0xff5733, 55, "Mars");
+        marsOrbit.add(mars, createOrbit(55));
+
+        const jupiterOrbit = new THREE.Group();
+        const jupiter = createPlanet(5, 0xe0c8a0, 78, "Jupiter");
+        jupiterOrbit.add(jupiter, createOrbit(78));
+
+        const saturnOrbit = new THREE.Group();
+        const saturn = createPlanet(4.5, 0xf0e68c, 105, "Saturn");
+        // Saturn's rings
+        const ringGeometry = new THREE.RingGeometry(6, 9, 64);
+        const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xcccccc, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+        const saturnRings = new THREE.Mesh(ringGeometry, ringMaterial);
+        saturnRings.rotation.x = Math.PI * 0.4;
+        saturn.add(saturnRings);
+        saturnOrbit.add(saturn, createOrbit(105));
+
+        const uranusOrbit = new THREE.Group();
+        const uranus = createPlanet(3, 0xadd8e6, 130, "Uranus");
+        uranusOrbit.add(uranus, createOrbit(130));
+
+        const neptuneOrbit = new THREE.Group();
+        const neptune = createPlanet(2.8, 0x4682b4, 155, "Neptune");
+        neptuneOrbit.add(neptune, createOrbit(155));
+
+        const planetGroups = [mercuryOrbit, venusOrbit, earthOrbit, marsOrbit, jupiterOrbit, saturnOrbit, uranusOrbit, neptuneOrbit];
+        planetGroups.forEach(group => celestialBodies.add(group));
+        
+        // Simple starfield
+        const starGeometry = new THREE.BufferGeometry();
+        const starVertices = [];
+        for (let i = 0; i < 10000; i++) {
+            const x = THREE.MathUtils.randFloatSpread(2000);
+            const y = THREE.MathUtils.randFloatSpread(2000);
+            const z = THREE.MathUtils.randFloatSpread(2000);
+            starVertices.push(x, y, z);
+        }
+        starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        // --- Raycasting for Interaction ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function onMouseClick(event) {
+            // Calculate mouse position in normalized device coordinates
+            // (-1 to +1) for both components
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(celestialBodies.children, true);
+            
+            if (intersects.length > 0) {
+                const clickedObject = intersects[0].object;
+                if(planetData[clickedObject.name]) {
+                    const data = planetData[clickedObject.name];
+                    document.getElementById('planet-name').innerText = clickedObject.name;
+                    document.getElementById('planet-info').innerText = data.description;
+                    document.getElementById('info-panel').style.display = 'block';
+                    document.getElementById('title-overlay').style.display = 'none';
+                }
+            }
+        }
+        
+        // --- Sun Glow Effect ---
+        function createGlowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const context = canvas.getContext('2d');
+            const gradient = context.createRadialGradient(
+                canvas.width / 2, canvas.height / 2, 0,
+                canvas.width / 2, canvas.height / 2, canvas.width / 2
+            );
+            gradient.addColorStop(0.2, 'rgba(255, 255, 200, 1)');
+            gradient.addColorStop(0.5, 'rgba(255, 220, 0, 0.5)');
+            gradient.addColorStop(1, 'rgba(255, 165, 0, 0)');
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // --- Event Listeners ---
+        window.addEventListener('click', onMouseClick);
+        document.getElementById('close-btn').addEventListener('click', () => {
+             document.getElementById('info-panel').style.display = 'none';
+             document.getElementById('title-overlay').style.display = 'block';
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- Animation Loop ---
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+            
+            // Planet Rotations
+            sun.rotation.y += 0.001;
+            mercury.rotation.y += 0.004;
+            venus.rotation.y += 0.002;
+            earth.rotation.y += 0.01;
+            mars.rotation.y += 0.008;
+            jupiter.rotation.y += 0.02;
+            saturn.rotation.y += 0.018;
+            uranus.rotation.y += 0.015;
+            neptune.rotation.y += 0.012;
+
+            // Planet Orbits (revolution)
+            mercuryOrbit.rotation.y = elapsedTime * 0.4;
+            venusOrbit.rotation.y = elapsedTime * 0.25;
+            earthOrbit.rotation.y = elapsedTime * 0.1;
+            marsOrbit.rotation.y = elapsedTime * 0.08;
+            jupiterOrbit.rotation.y = elapsedTime * 0.04;
+            saturnOrbit.rotation.y = elapsedTime * 0.02;
+            uranusOrbit.rotation.y = elapsedTime * 0.01;
+            neptuneOrbit.rotation.y = elapsedTime * 0.005;
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Start animation after window loads
+        window.onload = function() {
+            animate();
+        };
+
+    </script>
+</body>
+</html>
